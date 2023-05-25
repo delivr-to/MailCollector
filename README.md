@@ -38,19 +38,19 @@ In `capture` mode, MailCollector can be run retrospectively, after a campaign ha
 
 `capture` mode execution:
 
-```toml
+```
 > .\MailCollector.exe capture [config.toml] 
 ```
 
 `monitor` mode execution:
 
-```toml
+```
 > .\MailCollector.exe monitor [config.toml] 
 ```
 
 An example of `capture` mode execution can be seen below:
 
-```toml
+```
 > .\MailCollector.exe capture
 
 
