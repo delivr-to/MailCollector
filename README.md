@@ -6,8 +6,6 @@ MailCollector leverages COM to communicate with the Outlook client and retrieve 
 
 ## Installation
 
-On a host with Office 365 (specifically Outlook) installed:
-
 1. Clone repository
 2. In the project folder run `dotnet restore`, then `dotnet build` (alternatively, open and build the project in Visual Studio).
 
@@ -40,19 +38,19 @@ In `capture` mode, MailCollector can be run retrospectively, after a campaign ha
 
 `capture` mode execution:
 
-```toml
+```
 > .\MailCollector.exe capture [config.toml] 
 ```
 
 `monitor` mode execution:
 
-```toml
+```
 > .\MailCollector.exe monitor [config.toml] 
 ```
 
 An example of `capture` mode execution can be seen below:
 
-```toml
+```
 > .\MailCollector.exe capture
 
 
