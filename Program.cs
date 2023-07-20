@@ -9,8 +9,9 @@ namespace MailCollector
 {
     class Program
     {
-        private static bool WriteJsonLogToFile(JArray results, string path="output.json")
+        private static bool WriteJsonLogToFile(JObject results, string campaignId)
         {
+            string path = $"output-{campaignId}.json";
             try
             {
                 using (StreamWriter sw = new StreamWriter(new FileStream(path, FileMode.Create, FileAccess.Write)))
@@ -307,8 +308,13 @@ namespace MailCollector
             items = targetFolder.Items;
             Items[] itemSets = { junkItems, items };
 
-            JArray emailResultList = new JArray();
+            JObject emailResultsJson = new JObject(
+                new JProperty("campaign_id", campaignId),
+                new JProperty("results", new JArray())
+            );
 
+            JArray emailResultList = emailResultsJson["results"].Value<JArray>();
+            
             string tempPath = Utils.CreateUniqueTempDirectory();
 
             if (mode == "capture")
@@ -343,22 +349,22 @@ namespace MailCollector
                     }
                 }
                 Console.WriteLine($"\n[+] Processed {emailResultList.Count} delivr.to emails.");
-                
-                bool logWritten = WriteJsonLogToFile(emailResultList);
+
+                bool logWritten = WriteJsonLogToFile(emailResultsJson, campaignId);
                 Directory.Delete(tempPath, true);
 
                 if (logWritten)
-                    Console.WriteLine("[+] JSON Log Written to: output.json");
+                    Console.WriteLine($"[+] JSON Log Written to: output-{campaignId}.json");
                 else
                     Console.WriteLine("[!] Failed to write log file!");
             }
             else
             {
                 Console.CancelKeyPress += delegate {
-                    bool logWritten = WriteJsonLogToFile(emailResultList);
+                    bool logWritten = WriteJsonLogToFile(emailResultsJson, campaignId);
                     Directory.Delete(tempPath, true);
                     if (logWritten)
-                        Console.WriteLine("[+] JSON Log Written to: output.json");
+                        Console.WriteLine($"[+] JSON Log Written to: output-{campaignId}.json");
                     else
                         Console.WriteLine("[!] Failed to write log file!");
                 };
