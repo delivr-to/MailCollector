@@ -292,7 +292,16 @@ namespace MailCollector
                 }
                 else
                 {
-                    targetFolder = outlookNamespace.Folders[smtpRecipientAddress].Folders["Inbox"].Folders[folderName];
+                    //Try both inside and outside of 'Inbox' before giving up on locating folder
+                    try
+                    {
+                        targetFolder = outlookNamespace.Folders[smtpRecipientAddress].Folders["Inbox"].Folders[folderName];
+                    }
+                    catch
+                    {
+                        targetFolder = outlookNamespace.Folders[smtpRecipientAddress].Folders[folderName];
+                    }
+                    
                 }
                 Console.WriteLine($"\n[+] Searching '{targetFolder.Name}' folder.");
             }

@@ -143,3 +143,7 @@ Notably several fields in this JSON are provided for utility to end users, and a
     ]
 }
 ```
+
+## Known Issues
+
+- MailCollector does not work with Outlook clients set with 'Try the new Outlook' set to on.
