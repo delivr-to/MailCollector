@@ -28,9 +28,26 @@ namespace MailCollector
             HELD
         }
 
-        public static string CreateUniqueTempDirectory()
+        public static string NormalisePath(string tempPath)
         {
-            var uniqueTempDir = Path.GetFullPath(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+            var path = Path.GetFullPath(tempPath);
+            if (!Directory.Exists(path))
+            {
+                Console.WriteLine($"[+] Payload save directory doesn't exist, attempting to create it.");
+                Directory.CreateDirectory(tempPath);
+            }
+            return path;
+        }
+
+        public static string CreateUniqueTempDirectory(string path="")
+        {
+            string uniqueTempDir;
+
+            if (String.IsNullOrEmpty(path))
+                uniqueTempDir = Path.GetFullPath(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+            else
+                uniqueTempDir = Path.Combine(path, Guid.NewGuid().ToString());
+            
             Directory.CreateDirectory(uniqueTempDir);
             return uniqueTempDir;
         }
@@ -75,7 +92,6 @@ namespace MailCollector
                     {
                         byte[] hashBytes = md5.ComputeHash(stream);
                         string hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-                        //Directory.Delete(tempPath, true);
                         return hashString;
                     }
                 }

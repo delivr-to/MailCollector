@@ -4,6 +4,8 @@ using Microsoft.Office.Interop.Outlook;
 using Nett;
 using Application = Microsoft.Office.Interop.Outlook.Application;
 using Newtonsoft.Json.Linq;
+using static System.Guid;
+using System.Security.Cryptography;
 
 namespace MailCollector
 {
@@ -156,6 +158,8 @@ namespace MailCollector
             string folderName = "";
             string configFile = "config.toml";
             string smtpRecipientAddress = "";
+            bool cleanup = true;
+            string tempPath = "";
 
             showBanner();
 
@@ -214,7 +218,15 @@ namespace MailCollector
             try
             {
                 // Retrieve campaign ID from configuration
-                campaignId = config.Get<string>("campaignId");
+                campaignId = config.Get<string>("campaignId").Substring(0, 36);
+                
+                // Confirm valid UUID before proceeding
+                if(!Guid.TryParse(campaignId, out Guid output))
+                {
+                    Console.WriteLine("[!] Invalid Campaign ID UUID provided. Exiting...");
+                    return;
+                }
+
                 Console.WriteLine($"[+] Searching for emails with campaign ID: {campaignId}.");
             }
             catch
@@ -288,7 +300,7 @@ namespace MailCollector
             {
                 if (string.IsNullOrEmpty(folderName))
                 {
-                    targetFolder = outlookNamespace.Folders[smtpRecipientAddress].Folders[OlDefaultFolders.olFolderInbox];
+                    targetFolder = outlookNamespace.Folders[smtpRecipientAddress].Folders["Inbox"];
                 }
                 else
                 {
@@ -303,7 +315,6 @@ namespace MailCollector
                     }
                     
                 }
-                Console.WriteLine($"\n[+] Searching '{targetFolder.Name}' folder.");
             }
             catch
             {
@@ -323,8 +334,44 @@ namespace MailCollector
             );
 
             JArray emailResultList = emailResultsJson["results"].Value<JArray>();
+
+            try
+            {
+                string tempPathStr = config.Get<string>("tempPath");
+                if (String.IsNullOrEmpty(tempPathStr))
+                {
+                    tempPath = Utils.CreateUniqueTempDirectory();
+                } else
+                {
+                    string NormPath = Utils.NormalisePath(tempPathStr);
+                    tempPath = Utils.CreateUniqueTempDirectory(NormPath);
+                    Console.WriteLine($"[+] Using specified payload save path at \"{tempPath}\"");
+                }
+            } catch
+            {
+                tempPath = Utils.CreateUniqueTempDirectory();
+            }
             
-            string tempPath = Utils.CreateUniqueTempDirectory();
+
+            try
+            {
+                // Allow for cleanup to be skipped so attachments are retained.
+                string cleanupStr = config.Get<string>("cleanup").ToLower();
+                
+                if (cleanupStr == "false")
+                {
+                    Console.WriteLine($"[+] Cleanup to be skipped.");
+                    cleanup = false;
+                }
+                else if (cleanupStr != "true")
+                {
+                    Console.WriteLine($"[!] \"cleanup\" must be a value of 'true' or 'false'. Defaulting to 'true'.");
+                }
+            }
+            catch
+            { } // Will cleanup as usual
+
+            Console.WriteLine($"\n[+] Searching '{targetFolder.Name}' folder.\n");
 
             if (mode == "capture")
             {
@@ -359,8 +406,19 @@ namespace MailCollector
                 }
                 Console.WriteLine($"\n[+] Processed {emailResultList.Count} delivr.to emails.");
 
+                if(cleanup)
+                {
+                    try
+                    {
+                        Directory.Delete(tempPath, true);
+                    }
+                    catch
+                    {
+                        Console.WriteLine($"[!] Failed to cleanup saved payloads at \"{tempPath}\"");
+                    }
+                }
+
                 bool logWritten = WriteJsonLogToFile(emailResultsJson, campaignId);
-                Directory.Delete(tempPath, true);
 
                 if (logWritten)
                     Console.WriteLine($"[+] JSON Log Written to: output-{campaignId}.json");
@@ -370,8 +428,19 @@ namespace MailCollector
             else
             {
                 Console.CancelKeyPress += delegate {
+                    if (cleanup)
+                    {
+                        try
+                        {
+                            Directory.Delete(tempPath, true);
+                        }
+                        catch
+                        {
+                            Console.WriteLine($"[!] Failed to cleanup saved payloads at \"{tempPath}\"");
+                        }
+                    }
+
                     bool logWritten = WriteJsonLogToFile(emailResultsJson, campaignId);
-                    Directory.Delete(tempPath, true);
                     if (logWritten)
                         Console.WriteLine($"[+] JSON Log Written to: output-{campaignId}.json");
                     else
