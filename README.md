@@ -22,6 +22,7 @@ recipientAddress = "test-mailbox@delivr.to"
 folderName = "delivr.to"
 cleanup = "true"
 tempPath = "output"
+deleteEmail = "false"
 ```
 
 At a minimum, the configuration file needs to contain the `campaignID` value. Which can be retrieved from delivr.to either retrospectively, or by scheduling a future campaign (relevant for 'monitor' mode, see below).
@@ -33,6 +34,7 @@ The other options are optional and achieve the following:
 - `folderName` - Defaults to the inbox, but can be filtered to a specific folder, e.g. if rules have been configured.
 - `cleanup` - Defaults to "true", but can be configured to "false" to retain saved payloads used in hash calculation, e.g. for debugging purposes or further analysis.
 - `tempPath` - Defaults to a GUID-named folder in %TEMP%, but a relative or absolute path can be given to customise this (e.g. for AV exclusions). Backslashes must be escaped.
+- `deleteEmail` - Defaults to "false", but can be configured to delete each delivr.to email once processed.
 
 ### Execution
 

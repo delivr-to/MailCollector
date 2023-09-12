@@ -159,6 +159,7 @@ namespace MailCollector
             string configFile = "config.toml";
             string smtpRecipientAddress = "";
             bool cleanup = true;
+            bool deleteEmail = false;
             string tempPath = "";
 
             showBanner();
@@ -371,6 +372,24 @@ namespace MailCollector
             catch
             { } // Will cleanup as usual
 
+            try
+            {
+                // Allow for email to be deleted if specified.
+                string deleteStr = config.Get<string>("deleteEmail").ToLower();
+
+                if (deleteStr == "true")
+                {
+                    Console.WriteLine($"[+] Emails to be deleted once parsed.");
+                    deleteEmail = true;
+                }
+                else if (deleteStr != "false")
+                {
+                    Console.WriteLine($"[!] \"deleteEmail\" must be a value of 'true' or 'false'. Defaulting to 'false'.");
+                }
+            }
+            catch
+            { } // Will skip email deletion by default
+
             Console.WriteLine($"\n[+] Searching '{targetFolder.Name}' folder.\n");
 
             if (mode == "capture")
@@ -392,6 +411,18 @@ namespace MailCollector
                                         {
                                             JObject emailJson = ProcessEmail(mailItem, tempPath);
                                             emailResultList.Add(emailJson);
+
+                                            // Won't delete email if there's a prior processing issue as we'd lose the result
+                                            if (deleteEmail)
+                                            {
+                                                try
+                                                {
+                                                    mailItem.Delete();
+                                                } catch
+                                                {
+                                                    Console.WriteLine($"Failed to delete email with subject \"{mailItem.Subject}\"");
+                                                }
+                                            }
                                         }
                                         catch
                                         {
@@ -463,6 +494,19 @@ namespace MailCollector
                                         JObject emailJson = ProcessEmail(mailItem, tempPath);
                                         emailResultList.Add(emailJson);
                                         Console.WriteLine(emailJson.ToString());
+
+                                        // Won't delete email if there's a prior processing issue as we'd lose the result
+                                        if (deleteEmail)
+                                        {
+                                            try
+                                            {
+                                                mailItem.Delete();
+                                            }
+                                            catch
+                                            {
+                                                Console.WriteLine($"Failed to delete email with subject \"{mailItem.Subject}\"");
+                                            }
+                                        }
                                     }
                                     catch
                                     {
