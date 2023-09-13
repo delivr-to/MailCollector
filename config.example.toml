@@ -1,0 +1,7 @@
+campaignId = "d373b79e-bd9a-4e3a-89e7-a14bdd3df9e3"
+senderAddress = "no-reply@delivrto.me"
+recipientAddress = "test-mailbox@delivr.to"
+folderName = "delivr.to"
+cleanup = "true"
+tempPath = "output"
+deleteEmail = "false"
