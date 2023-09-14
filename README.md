@@ -4,6 +4,8 @@ This .NET 4.8 application allows for the 'offline' collection of delivr.to campa
 
 MailCollector leverages COM to communicate with the Outlook client and retrieve results. It can triage both links and attachments and supports filtering for results by campaign ID, sender, recipient, and mailbox folder.
 
+> Read more about MailCollector in the release blog, [here](https://blog.delivr.to/mailcollector-collecting-delivr-to-results-from-outlook-7a28630dcd69).
+
 ## Installation
 
 1. Clone repository
