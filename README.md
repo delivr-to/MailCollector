@@ -25,6 +25,7 @@ folderName = "delivr.to"
 cleanup = "true"
 tempPath = "output"
 deleteEmail = "false"
+ondiskFallback = "true"
 ```
 
 At a minimum, the configuration file needs to contain the `campaignID` value. Which can be retrieved from delivr.to either retrospectively, or by scheduling a future campaign (relevant for 'monitor' mode, see below).
@@ -37,6 +38,7 @@ The other options are optional and achieve the following:
 - `cleanup` - Defaults to "true", but can be configured to "false" to retain saved payloads used in hash calculation, e.g. for debugging purposes or further analysis.
 - `tempPath` - Defaults to a GUID-named folder in %TEMP%, but a relative or absolute path can be given to customise this (e.g. for AV exclusions). Backslashes must be escaped.
 - `deleteEmail` - Defaults to "false", but can be configured to delete each delivr.to email once processed.
+- `ondiskFallback` - Defaults to "true", attachment hash calculation will be attempted in-memory, any issues with this will fallback to writing to disk unless this value is set to "false".
 
 ### Execution
 
@@ -156,3 +158,5 @@ Notably several fields in this JSON are provided for utility to end users, and a
 
 - MailCollector does not work with Outlook clients set with 'Try the new Outlook' set to on.
 - Can error when accessing a given mail item actively in use in Outlook.
+- Body payloads report as 'Held'.
+- MailCollector fails to read mailboxes configured to use IMAP.

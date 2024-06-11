@@ -13,7 +13,10 @@ namespace MailCollector
     class Utils
     {
         static string LINK_DOMAIN = "delivrto\\.me";
-        
+
+        //https://stackoverflow.com/questions/29912136/converting-a-outlook-mail-attachment-to-byte-array-with-c-sharp
+        const string PR_ATTACH_DATA_BIN = "http://schemas.microsoft.com/mapi/proptag/0x37010102";
+
         public enum DeliveryType
         {
             AS_LINK,
@@ -78,22 +81,36 @@ namespace MailCollector
             return mailItem.ReceivedTime.ToString("yyyy-MM-dd HH:mm:ss");
         }
 
-        public static string GetAttachmentHash(MailItem mailItem, string tempPath)
+        public static string GetAttachmentHash(MailItem mailItem, string tempPath, bool ondiskFallback=true)
         {
             // Return after the first one
             foreach (Attachment attachment in mailItem.Attachments)
             {
-                string outFile = Path.Combine(tempPath, attachment.FileName);
-                attachment.SaveAsFile(outFile);
+                byte[] attachmentData = null;
+                try
+                {
+                    attachmentData = attachment.PropertyAccessor.GetProperty(PR_ATTACH_DATA_BIN);
+                } catch
+                {
+                    if (ondiskFallback)
+                    {
+                        Console.WriteLine($"[!] Encountered error calculating hash in memory. Falling back to on-disk calculation.");
+                        string outFile = Path.Combine(tempPath, attachment.FileName);
+                        attachment.SaveAsFile(outFile);
+                        attachmentData = File.ReadAllBytes(outFile);
+                    } else
+                    {
+                        Console.WriteLine($"[!] Encountered error calculating hash in memory. Fallback disabled by config. Continuing...");
+                        return "";
+                    }
+                }
 
                 using (var md5 = MD5.Create())
                 {
-                    using (var stream = File.OpenRead(outFile))
-                    {
-                        byte[] hashBytes = md5.ComputeHash(stream);
-                        string hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-                        return hashString;
-                    }
+                    
+                    byte[] hashBytes = md5.ComputeHash(attachmentData);
+                    string hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                    return hashString;
                 }
             }
             return "";

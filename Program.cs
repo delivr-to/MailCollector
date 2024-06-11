@@ -28,7 +28,7 @@ namespace MailCollector
             }
         }
 
-        private static JObject ProcessEmail(MailItem mailItem, string tempPath)
+        private static JObject ProcessEmail(MailItem mailItem, string tempPath, bool ondiskFallback=true)
         {
             dynamic emailJson = new JObject();
 
@@ -104,7 +104,7 @@ namespace MailCollector
                         emailJson.status = "Delivered";
                     }
 
-                    string attachmentHash = Utils.GetAttachmentHash(mailItem, tempPath);
+                    string attachmentHash = Utils.GetAttachmentHash(mailItem, tempPath, ondiskFallback);
                     if (!string.IsNullOrEmpty(attachmentHash))
                     {
                         emailJson.hash = attachmentHash;
@@ -160,6 +160,7 @@ namespace MailCollector
             string smtpRecipientAddress = "";
             bool cleanup = true;
             bool deleteEmail = false;
+            bool ondiskFallback = true;
             string tempPath = "";
 
             showBanner();
@@ -276,6 +277,24 @@ namespace MailCollector
                 smtpRecipientAddress = outlookNamespace.CurrentUser.AddressEntry.GetExchangeUser().PrimarySmtpAddress;
                 Console.WriteLine($"[+] No recipient email in config, using default \"{smtpRecipientAddress}\".");
             }
+
+            try
+            {
+                // Allow for fallback to be blocked so no attachment is written to disk.
+                string ondiskFallbackStr = config.Get<string>("ondiskFallback").ToLower();
+
+                if (ondiskFallbackStr == "false")
+                {
+                    Console.WriteLine($"[+] No fallback to on-disk attachment hash calculation.");
+                    ondiskFallback = false;
+                }
+                else if (ondiskFallbackStr != "true")
+                {
+                    Console.WriteLine($"[!] \"ondiskFallbackStr\" must be a value of 'true' or 'false'. Defaulting to 'true'.");
+                }
+            }
+            catch
+            { } // Will fallback as usual
 
             try
             {
@@ -409,7 +428,7 @@ namespace MailCollector
                                     {
                                         try
                                         {
-                                            JObject emailJson = ProcessEmail(mailItem, tempPath);
+                                            JObject emailJson = ProcessEmail(mailItem, tempPath, ondiskFallback);
                                             emailResultList.Add(emailJson);
 
                                             // Won't delete email if there's a prior processing issue as we'd lose the result
@@ -491,7 +510,7 @@ namespace MailCollector
                                 {
                                     try
                                     {
-                                        JObject emailJson = ProcessEmail(mailItem, tempPath);
+                                        JObject emailJson = ProcessEmail(mailItem, tempPath, ondiskFallback);
                                         emailResultList.Add(emailJson);
                                         Console.WriteLine(emailJson.ToString());
 
