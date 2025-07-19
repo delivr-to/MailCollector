@@ -26,6 +26,7 @@ cleanup = "true"
 tempPath = "output"
 deleteEmail = "false"
 ondiskFallback = "true"
+msgSave = "false"
 ```
 
 At a minimum, the configuration file needs to contain the `campaignID` value. Which can be retrieved from delivr.to either retrospectively, or by scheduling a future campaign (relevant for 'monitor' mode, see below).
@@ -39,6 +40,7 @@ The other options are optional and achieve the following:
 - `tempPath` - Defaults to a GUID-named folder in %TEMP%, but a relative or absolute path can be given to customise this (e.g. for AV exclusions). Backslashes must be escaped.
 - `deleteEmail` - Defaults to "false", but can be configured to delete each delivr.to email once processed.
 - `ondiskFallback` - Defaults to "true", attachment hash calculation will be attempted in-memory, any issues with this will fallback to writing to disk unless this value is set to "false".
+- `msgSave` - Defaults to "false" and requires `cleanup` to be false. This saves the MSG file for each email to the output directory.
 
 ### Execution
 

@@ -24,11 +24,11 @@ namespace MailCollector
             }
             catch
             {
-                return true;            
+                return true;
             }
         }
 
-        private static JObject ProcessEmail(MailItem mailItem, string tempPath, bool ondiskFallback=true)
+        private static JObject ProcessEmail(MailItem mailItem, string tempPath, bool ondiskFallback = true, bool msgSave = false)
         {
             dynamic emailJson = new JObject();
 
@@ -41,10 +41,12 @@ namespace MailCollector
 
             // Fetch Email ID from the subject
             string emailId = Utils.GetEmailIdFromSubject(mailItem.Subject);
-            if (!string.IsNullOrEmpty(emailId)){
+            if (!string.IsNullOrEmpty(emailId))
+            {
                 Console.WriteLine($"[+] {emailId}");
                 emailJson.email_id = emailId;
-            } else
+            }
+            else
             {
                 return emailJson;
             }
@@ -53,7 +55,7 @@ namespace MailCollector
             Utils.DeliveryType mailType = Utils.GetDeliveryType(mailItem);
             if (mailType != Utils.DeliveryType.UNKNOWN)
             {
-                if(mailType == Utils.DeliveryType.AS_LINK)
+                if (mailType == Utils.DeliveryType.AS_LINK)
                 {
                     // Email is a link
                     emailJson.mail_type = "as_link";
@@ -90,7 +92,7 @@ namespace MailCollector
                     default:
                         break;
                 };
-            } 
+            }
             else if (mailType == Utils.DeliveryType.AS_ATTACHMENT)
             {
                 bool hasAttachment = Utils.EmailHasAttachment(mailItem);
@@ -109,13 +111,27 @@ namespace MailCollector
                     {
                         emailJson.hash = attachmentHash;
                     }
-                } else
+                }
+                else
                 {
                     emailJson.status = "Held";
                 }
             }
             if ((bool)emailJson.in_junk)
                 emailJson.status = $"Junk ({emailJson.status})";
+
+            if (msgSave)
+            {
+                try
+                {
+                    Utils.SaveMsg(mailItem, tempPath, emailId);
+                }
+                catch
+                {
+                    Console.WriteLine($"[!] Failed to save MSG file for email ID: {emailId}");
+                }
+            }
+
             return emailJson;
         }
 
@@ -159,6 +175,7 @@ namespace MailCollector
             string configFile = "config.toml";
             string smtpRecipientAddress = "";
             bool cleanup = true;
+            bool msgSave = false;
             bool deleteEmail = false;
             bool ondiskFallback = true;
             string tempPath = "";
@@ -180,7 +197,8 @@ namespace MailCollector
             {
                 Console.WriteLine("[+] Capture mode selected. Existing mail will be captured for processing.");
             }
-            else { 
+            else
+            {
                 Console.WriteLine("[!] Incorrect mode requested. MailCollector.exe <mode> <config.toml>");
                 return;
             }
@@ -198,14 +216,15 @@ namespace MailCollector
                 {
                     config = Toml.ReadFile(configFile);
                 }
-                
-            } catch
+
+            }
+            catch
             {
                 Console.WriteLine("[+] Failed to load config file. Exiting...");
                 return;
             }
-                
-            
+
+
             try
             {
                 // Retrieve sender address from configuration
@@ -216,14 +235,14 @@ namespace MailCollector
                 Console.WriteLine($"[+] No sending email in config, defaulting to \"{senderAddress}\".");
             }
 
-            
+
             try
             {
                 // Retrieve campaign ID from configuration
                 campaignId = config.Get<string>("campaignId").Substring(0, 36);
-                
+
                 // Confirm valid UUID before proceeding
-                if(!Guid.TryParse(campaignId, out Guid output))
+                if (!Guid.TryParse(campaignId, out Guid output))
                 {
                     Console.WriteLine("[!] Invalid Campaign ID UUID provided. Exiting...");
                     return;
@@ -247,7 +266,6 @@ namespace MailCollector
                 Console.WriteLine("[+] No folder name in config, defaulting to \"Inbox\".");
             }
 
-            
             Application outlookApp;
             NameSpace outlookNamespace;
             MAPIFolder targetFolder;
@@ -266,7 +284,6 @@ namespace MailCollector
                 return;
             }
 
-         
             try
             {
                 // Retrieve recipient address from configuration
@@ -333,7 +350,7 @@ namespace MailCollector
                     {
                         targetFolder = outlookNamespace.Folders[smtpRecipientAddress].Folders[folderName];
                     }
-                    
+
                 }
             }
             catch
@@ -343,7 +360,7 @@ namespace MailCollector
             }
 
             junkFolder = outlookNamespace.Folders[smtpRecipientAddress].Folders["Junk Email"];
-            
+
             junkItems = junkFolder.Items;
             items = targetFolder.Items;
             Items[] itemSets = { junkItems, items };
@@ -361,23 +378,25 @@ namespace MailCollector
                 if (String.IsNullOrEmpty(tempPathStr))
                 {
                     tempPath = Utils.CreateUniqueTempDirectory();
-                } else
+                }
+                else
                 {
                     string NormPath = Utils.NormalisePath(tempPathStr);
                     tempPath = Utils.CreateUniqueTempDirectory(NormPath);
                     Console.WriteLine($"[+] Using specified payload save path at \"{tempPath}\"");
                 }
-            } catch
+            }
+            catch
             {
                 tempPath = Utils.CreateUniqueTempDirectory();
             }
-            
+
 
             try
             {
                 // Allow for cleanup to be skipped so attachments are retained.
                 string cleanupStr = config.Get<string>("cleanup").ToLower();
-                
+
                 if (cleanupStr == "false")
                 {
                     Console.WriteLine($"[+] Cleanup to be skipped.");
@@ -390,6 +409,33 @@ namespace MailCollector
             }
             catch
             { } // Will cleanup as usual
+
+            try
+            {
+                // Save messages as part of processing.
+                string msgSaveStr = config.Get<string>("msgSave").ToLower();
+
+                if (msgSaveStr == "true")
+                {
+                    if (cleanup == true)
+                    {
+                        Console.WriteLine($"[!] MSG files set to save, but cleanup is also true. One of these must be false, reverting MSG save to false.");
+
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[+] MSG files will be saved to output directory.");
+                        msgSave = true;
+                    }
+                }
+                else if (msgSaveStr != "false")
+                {
+                    Console.WriteLine($"[!] \"msgSave\" must be a value of 'true' or 'false'. Defaulting to 'false'.");
+                }
+            }
+            catch
+            { } // Will fallback as usual
+
 
             try
             {
@@ -419,16 +465,16 @@ namespace MailCollector
                     {
                         if (_obj is MailItem)
                         {
-                            MailItem mailItem = (MailItem) _obj;
+                            MailItem mailItem = (MailItem)_obj;
                             if (mailItem.Sender.Address == senderAddress && mailItem.Subject.Contains(campaignId))
                             {
-                                foreach(Recipient rec in mailItem.Recipients)
+                                foreach (Recipient rec in mailItem.Recipients)
                                 {
-                                    if(rec.AddressEntry.GetExchangeUser().PrimarySmtpAddress == smtpRecipientAddress)
+                                    if (rec.AddressEntry.GetExchangeUser().PrimarySmtpAddress == smtpRecipientAddress)
                                     {
                                         try
                                         {
-                                            JObject emailJson = ProcessEmail(mailItem, tempPath, ondiskFallback);
+                                            JObject emailJson = ProcessEmail(mailItem, tempPath, ondiskFallback, msgSave);
                                             emailResultList.Add(emailJson);
 
                                             // Won't delete email if there's a prior processing issue as we'd lose the result
@@ -437,7 +483,8 @@ namespace MailCollector
                                                 try
                                                 {
                                                     mailItem.Delete();
-                                                } catch
+                                                }
+                                                catch
                                                 {
                                                     Console.WriteLine($"Failed to delete email with subject \"{mailItem.Subject}\"");
                                                 }
@@ -447,7 +494,7 @@ namespace MailCollector
                                         {
                                             Console.WriteLine($"Failed to process email with subject \"{mailItem.Subject}\"");
                                         }
-                                        
+
                                     }
                                 }
                             }
@@ -456,7 +503,7 @@ namespace MailCollector
                 }
                 Console.WriteLine($"\n[+] Processed {emailResultList.Count} delivr.to emails.");
 
-                if(cleanup)
+                if (cleanup)
                 {
                     try
                     {

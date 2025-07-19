@@ -1,11 +1,9 @@
-﻿
-using System;
+﻿using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Office.Interop.Outlook;
 using System.Security.Cryptography;
 using System.IO;
-
 
 namespace MailCollector
 {
@@ -42,7 +40,7 @@ namespace MailCollector
             return path;
         }
 
-        public static string CreateUniqueTempDirectory(string path="")
+        public static string CreateUniqueTempDirectory(string path = "")
         {
             string uniqueTempDir;
 
@@ -50,22 +48,30 @@ namespace MailCollector
                 uniqueTempDir = Path.GetFullPath(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
             else
                 uniqueTempDir = Path.Combine(path, Guid.NewGuid().ToString());
-            
+
             Directory.CreateDirectory(uniqueTempDir);
             return uniqueTempDir;
         }
 
+        public static bool SaveMsg(MailItem mailItem, string tempPath, string emailId)
+        {
+            string msgFileName = Path.Combine(tempPath, $"{emailId}.msg");
+            mailItem.SaveAs(msgFileName, OlSaveAsType.olMSG);
+            
+            return true;
+        }
+
         public static DeliveryType GetDeliveryType(MailItem mailItem)
         {
-            if(mailItem.Body.Contains("requested link"))
+            if (mailItem.Body.Contains("requested link"))
             {
                 return DeliveryType.AS_LINK;
-            } 
+            }
             else if (mailItem.Body.Contains("requested file attached"))
             {
                 return DeliveryType.AS_ATTACHMENT;
             }
-            else 
+            else
             {
                 return DeliveryType.UNKNOWN;
             }
@@ -81,7 +87,7 @@ namespace MailCollector
             return mailItem.ReceivedTime.ToString("yyyy-MM-dd HH:mm:ss");
         }
 
-        public static string GetAttachmentHash(MailItem mailItem, string tempPath, bool ondiskFallback=true)
+        public static string GetAttachmentHash(MailItem mailItem, string tempPath, bool ondiskFallback = true)
         {
             // Return after the first one
             foreach (Attachment attachment in mailItem.Attachments)
@@ -90,7 +96,8 @@ namespace MailCollector
                 try
                 {
                     attachmentData = attachment.PropertyAccessor.GetProperty(PR_ATTACH_DATA_BIN);
-                } catch
+                }
+                catch
                 {
                     if (ondiskFallback)
                     {
@@ -98,7 +105,8 @@ namespace MailCollector
                         string outFile = Path.Combine(tempPath, attachment.FileName);
                         attachment.SaveAsFile(outFile);
                         attachmentData = File.ReadAllBytes(outFile);
-                    } else
+                    }
+                    else
                     {
                         Console.WriteLine($"[!] Encountered error calculating hash in memory. Fallback disabled by config. Continuing...");
                         return "";
@@ -107,7 +115,7 @@ namespace MailCollector
 
                 using (var md5 = MD5.Create())
                 {
-                    
+
                     byte[] hashBytes = md5.ComputeHash(attachmentData);
                     string hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
                     return hashString;
@@ -119,7 +127,7 @@ namespace MailCollector
         public static string GetAttachmentFileName(MailItem mailItem)
         {
             int attachmentCount = mailItem.Attachments.Count;
-            
+
             if (attachmentCount > 1)
             {
                 Console.WriteLine($"[!] Email has excess attachments. Attachment count is {attachmentCount}.");
@@ -135,15 +143,15 @@ namespace MailCollector
 
         public static string GetLinkFromEmail(MailItem mailItem)
         {
-            Regex link_regex = new Regex("https:\\/\\/"+ LINK_DOMAIN+ "\\/links\\/[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}");
-            
+            Regex link_regex = new Regex("https:\\/\\/" + LINK_DOMAIN + "\\/links\\/[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}");
+
             string[] link_matches = link_regex.Matches(mailItem.HTMLBody)
                                     .OfType<Match>()
                                     .Select(m => m.Groups[0].Value)
                                     .ToArray();
             if (link_matches.Length >= 1)
                 return link_matches.First();
-            
+
             return "";
         }
 
@@ -151,16 +159,16 @@ namespace MailCollector
         {
             Regex link_regex = new Regex("https:\\/\\/" + LINK_DOMAIN + "\\/links\\/[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}");
             Regex valid_link_html = new Regex("<a\\s*href=\\\"https:\\/\\/" + LINK_DOMAIN + "\\/links\\/[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}\\\">https:\\/\\/" + LINK_DOMAIN + "\\/links\\/[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}<\\/a>");
-            
+
 
             string linkOutput = "";
-            
+
             string[] valid_link_matches = valid_link_html.Matches(mailItem.HTMLBody)
                                     .OfType<Match>()
                                     .Select(m => m.Groups[0].Value)
                                     .ToArray();
 
-            if(valid_link_matches.Length == 1)
+            if (valid_link_matches.Length == 1)
             {
                 linkOutput = valid_link_matches.First();
                 return Utils.LinkDeliveryState.DELIVERED;
@@ -182,7 +190,7 @@ namespace MailCollector
         public static string GetEmailIdFromSubject(string subject)
         {
             Regex validateUUIDRegex = new Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$");
-            
+
             // Extract UUID from a string
             Regex extractUUIDRegex = new Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}");
             string[] matches = extractUUIDRegex.Matches(subject)
