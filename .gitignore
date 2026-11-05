@@ -396,3 +396,9 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# MailCollector local config and results
+config.toml
+output-*.json
+output/
+payloads/

@@ -1,0 +1,48 @@
+# Builds MailCollector and publishes a GitHub Release when a version tag is pushed:
+#   git tag v1.1.0 && git push origin v1.1.0
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Determine version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Test
+        run: dotnet test -c Release
+
+      - name: Build
+        run: dotnet build MailCollector.csproj -c Release -p:Version="$VERSION"
+
+      - name: Package
+        run: |
+          mkdir -p dist/MailCollector
+          cp bin/Release/MailCollector.exe bin/Release/MailCollector.exe.config \
+             config.example.toml README.md LICENSE dist/MailCollector/
+          cd dist && zip -r "MailCollector-$GITHUB_REF_NAME.zip" MailCollector
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" "dist/MailCollector-$GITHUB_REF_NAME.zip" \
+            --title "MailCollector $GITHUB_REF_NAME" --generate-notes $prerelease
